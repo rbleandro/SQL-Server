@@ -1,0 +1,8 @@
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:123862 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:120767 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:118063 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:117099 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:123131 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:123155 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:123249 /noprompt
+witadmin destroywi /collection:http://tfsserver2013:8080/tfs/nova.com /id:123472 /noprompt
