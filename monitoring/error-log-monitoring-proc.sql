@@ -6,7 +6,7 @@ BEGIN
 EXEC dbo.sp_executesql @statement = N'CREATE PROCEDURE [dbo].sp_monitorErrorLog AS' 
 END
 GO
-ALTER PROCEDURE sp_monitorErrorLog AS
+ALTER PROCEDURE dbo.sp_monitorErrorLog AS
 BEGIN
 	SET NOCOUNT ON;
 	DECLARE @Destinatarios VARCHAR(500);    
@@ -27,45 +27,30 @@ BEGIN
 	INSERT INTO #temp
 	EXEC master.dbo.xp_readerrorlog 0, 1, NULL, NULL, @low, @high, N'desc' 
 
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "fail", NULL, @low, @high, N'desc' 
-
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "error", NULL, @low, @high, N'desc' 
-
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "SECONDS", NULL, @low, @high, N'desc' 
-
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "fatal", NULL, @low, @high, N'desc' 
-
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "consistency", NULL, @low, @high, N'desc' 
-
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "I/O", NULL, @low, @high, N'desc' 
-
-	--INSERT INTO #temp
-	--EXEC master.dbo.xp_readerrorlog 0, 1, "suspect", NULL, @low, @high, N'desc' 
-
-	delete from #temp 
-	where message like '%finished without errors%'
-	or message like 'BACKUP DATABASE successfully processed%'
-	or message like '%found 0 errors and repaired 0 errors%'
-	or message like 'I/O is frozen on database%'
-	or message like 'I/O was resumed on database%'
-	or message like '%NT AUTHORITY\ANONYMOUS LOGON%'
-	or message like '%Failed to open the explicitly specified database%'
-	or message like 'Error: 18456, Severity: 14, State: 38.'
-	or message like 'Error: %, Severity: %, State: %.'
-	or message like 'Log was backed up%'
-	or message like 'DBCC TRACEON 3604%'
-	or message like '%This is an informational message%'
-	or message like 'Starting up database %'
-	or message like 'Setting database option %'
-	or message like 'DBCC TRACEOFF 3604%'
-	or message like '%changed from 0 to 0%'
-	or message like 'FILESTREAM: effective level = 0%'
+	DELETE FROM #temp 
+	WHERE message LIKE '%finished without errors%'
+	OR message LIKE 'BACKUP DATABASE successfully processed%'
+	OR message LIKE '%found 0 errors and repaired 0 errors%'
+	OR message LIKE 'I/O is frozen on database%'
+	OR message LIKE 'I/O was resumed on database%'
+	OR message LIKE '%NT AUTHORITY\ANONYMOUS LOGON%'
+	OR message LIKE '%Failed to open the explicitly specified database%'
+	OR message LIKE 'Error: 18456, Severity: 14, State: 38.'
+	OR message LIKE 'Error: %, Severity: %, State: %.'
+	OR message LIKE 'Log was backed up%'
+	OR message LIKE 'DBCC TRACEON 3604%'
+	OR message LIKE '%This is an informational message%'
+	OR message LIKE 'Starting up database %'
+	OR message LIKE 'Setting database option %'
+	OR message LIKE 'DBCC TRACEOFF 3604%'
+	OR message LIKE '%changed from 0 to 0%'
+	OR (message LIKE '%write%' AND DATEPART(WEEKDAY,GETDATE()) IN (1,7))
+	OR message LIKE '%backup%fail%'
+	OR message LIKE 'Cannot open backup device%'
+	OR message like '%database mirror%'
+	OR message like 'FILESTREAM:%'
+	OR message like 'The mirroring connection %'
+	OR message like 'Warning: Failure to calculate super-latch promotion threshold.%'
 	--or message like 'Login failed. The login is from an untrusted domain%'
 	
 
@@ -84,7 +69,7 @@ BEGIN
 		<td>Message</td>  
 		</tr>' +  
 		CAST ((  
-		SELECT  distinct 
+		SELECT  DISTINCT 
 		td=logdate,''  
 		,td=processinfo,''  
 		,td=[message]

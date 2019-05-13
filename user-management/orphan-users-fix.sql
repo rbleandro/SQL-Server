@@ -29,3 +29,7 @@ AND su.type='S' AND su.is_fixed_role=0
 --AND su.issqluser=1 and   (su.sid is not null and su.sid <> 0x0) 
 AND su.name NOT IN('dbo','guest','sys','INFORMATION_SCHEMA') 
 AND sl.sid IS NULL
+
+
+exec sp_change_users_login 'update_one','twsqlmonitor','twsqlmonitor'
+exec sp_change_users_login 'update_one','crmuser','crmuser'

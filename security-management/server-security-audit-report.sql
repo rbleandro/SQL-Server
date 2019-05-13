@@ -1,3 +1,17 @@
+use master
+go
+
+exec sp_configure 'show adv',1
+reconfigure
+exec sp_configure 'xp_cmdshell',1
+reconfigure
+go
+exec xp_cmdshell 'mkdir c:\SecAudit'
+go
+exec sp_configure 'xp_cmdshell',0
+reconfigure
+go
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].generateSecAuditReport') AND type IN (N'P', N'PC'))
 BEGIN
 EXEC dbo.sp_executesql @statement = N'CREATE PROCEDURE [dbo].generateSecAuditReport AS' 
@@ -18,7 +32,7 @@ EXEC [_dev_intranet].dbo.SecAuditPermissions
 
 DECLARE @dbname VARCHAR(250),@cmd VARCHAR(4000);
 DECLARE cur CURSOR FOR 
-SELECT name FROM sys.databases WHERE database_id > 4 
+SELECT name FROM sys.databases WHERE database_id > 4 AND is_read_only=0 and state_desc not in ('OFFLINE') AND name NOT LIKE 'ReportServer%' AND name NOT LIKE 'tempdb%'
 OPEN cur
 FETCH NEXT FROM cur INTO @dbname
 WHILE @@FETCH_STATUS <> -1

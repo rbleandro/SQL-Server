@@ -1,40 +1,40 @@
-SELECT r.session_id 
-	   ,CASE coalesce(object_name(st.objectid),'1') when '1' then LEFT(REPLACE(REPLACE(REPLACE(REPLACE(st.[text],CHAR(13),''),CHAR(10),''),'-',''),CHAR(9),''),8000) else object_name(st.objectid) END AS Query 
-	   ,SUBSTRING(st.text, (r.statement_start_offset/2)+1, 
-        ((CASE r.statement_end_offset
-          WHEN -1 THEN DATALENGTH(st.text)
-         ELSE r.statement_end_offset
-         END - r.statement_start_offset)/2) + 1) AS statement_text
-       ,r.start_time ,
-	   r.cpu_time ,
-       r.total_elapsed_time ,
-       r.status ,
-	   r.wait_type ,
-       r.wait_time ,
-       r.last_wait_type ,
-	   r.wait_resource ,
-	   r.blocking_session_id
-	   ,case coalesce(object_name(st1.objectid),'1') when '1' then LEFT(REPLACE(REPLACE(REPLACE(REPLACE(st1.[text],CHAR(13),''),CHAR(10),''),'-',''),CHAR(9),''),8000) else object_name(st1.objectid) END AS QBlock,
-	   r.reads ,
-       r.writes ,
-       r.logical_reads ,
-	   8*r.granted_query_memory AS [Memoria(KB)],
-	   r.command ,
-       r.statement_start_offset ,
-       r.statement_end_offset ,
-       r.plan_handle ,
-       r.context_info ,
-       r.percent_complete ,
-       r.lock_timeout ,
-       r.row_count 
-	   ,CASE r.transaction_isolation_level WHEN 1 THEN 'ReadUncomitted' WHEN 2 THEN 'ReadCommitted' WHEN 3 THEN 'Repeatable' WHEN 4 THEN 'serializable' WHEN 5 THEN 'Snapshot' END AS Isolamento
-       FROM sys.dm_exec_requests r 
-	   LEFT JOIN sys.dm_exec_requests rb ON r.blocking_session_id=rb.session_id
-	   CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) AS st
-	   OUTER APPLY sys.dm_exec_sql_text(rb.sql_handle) AS st1
-	   WHERE 1=1
-	   AND r.session_id>50
-	   AND r.database_id=DB_ID()
-	   AND r.session_id<>@@spid
-	   OPTION(RECOMPILE)
-	   
+SELECT DISTINCT r.session_id ,DB_NAME(r.database_id) AS 'Database'
+,CASE COALESCE(OBJECT_NAME(st.objectid,r.database_id),'1') WHEN '1' THEN 'check statement' ELSE OBJECT_NAME(st.objectid,r.database_id) END AS Query 
+,SUBSTRING(st.text, (r.statement_start_offset/2)+1 
+,((CASE r.statement_end_offset
+    WHEN -1 THEN DATALENGTH(st.text)
+    ELSE r.statement_end_offset
+    END - r.statement_start_offset)/2) + 1) AS statement_text
+,qs1.tempo_medioP1 AS TM
+,CONVERT(TIME,DATEADD (ms, r.total_elapsed_time, 0)) AS TempoTotal,
+r.wait_time ,
+r.last_wait_type AS waittype
+,r.blocking_session_id AS blksid
+,r.start_time 
+,DATEADD(SECOND, r.estimated_completion_time / 1000, GETDATE()) AS estimated_completion_time
+,CASE r.transaction_isolation_level WHEN 1 THEN 'ReadUncomitted' WHEN 2 THEN 'ReadCommitted' WHEN 3 THEN 'Repeatable' WHEN 4 THEN 'serializable' WHEN 5 THEN 'Snapshot' ELSE 'UNKNOWN' END  AS IsolamentoVit
+,PLANOVITIMA=r.plan_handle 
+,CASE rb.transaction_isolation_level WHEN 1 THEN 'ReadUncomitted' WHEN 2 THEN 'ReadCommitted' WHEN 3 THEN 'Repeatable' WHEN 4 THEN 'serializable' WHEN 5 THEN 'Snapshot' ELSE 'UNKNOWN' END AS IsolamentoVilao
+,PLANOVILAO=rb.plan_handle 
+,CASE COALESCE(OBJECT_NAME(st1.objectid,rb.database_id),'1') WHEN '1' THEN st1.[text] ELSE OBJECT_NAME(st1.objectid,rb.database_id) END AS QBlock
+,sb.login_name AS UserVilain
+,sb.host_name AS HostVilain
+,sp.login_name AS UserVictim
+,sp.host_name AS HostVictim
+,qs1.total_physical_reads
+,(SELECT CAST(t.scheduler_id AS VARCHAR(10)) + ',' AS [data()] FROM sys.dm_os_tasks t WHERE t.session_id = r.session_id FOR XML PATH('')) AS threads
+FROM sys.dm_exec_requests r 
+INNER JOIN sys.dm_exec_sessions sp ON sp.session_id=r.session_id
+LEFT JOIN sys.dm_exec_requests rb ON r.blocking_session_id=rb.session_id
+LEFT JOIN sys.dm_exec_sessions sb ON sb.session_id=rb.session_id
+CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) AS st
+OUTER APPLY sys.dm_exec_sql_text(rb.sql_handle) AS st1
+OUTER APPLY (SELECT TOP 1 tempo_medioP1 = (total_elapsed_time/1000 / execution_count),total_physical_reads FROM sys.dm_exec_query_stats qs WHERE qs.plan_handle = r.plan_handle ORDER BY qs.last_execution_time DESC) AS qs1
+WHERE 1=1
+--AND r.session_id&gt;50
+--AND r.database_id=DB_ID()
+AND r.session_id<>@@spid
+AND r.last_wait_type NOT IN ('BROKER_RECEIVE_WAITFOR')
+ORDER BY r.session_id
+OPTION(RECOMPILE)
+GO

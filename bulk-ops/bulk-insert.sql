@@ -29,7 +29,7 @@ BEGIN
 	-- INSERT INTO PACKAGES Table
 	SET @sSQL = 'BULK INSERT SmartSort_Canpar_SCS.dbo.PACKAGE_ALERTS '
 	SET @sSQL = @sSQL + 'FROM ''' + @sFilePath + ''''
-	SET @sSQL = @sSQL + ' WITH ( FIRE_TRIGGERS, FIRSTROW = 2, FORMATFILE = ''' +@sFormatFilePath + ''', BATCHSIZE = 4096 )'
+	SET @sSQL = @sSQL + ' WITH ( FIRE_TRIGGERS, FIRSTROW = 2, FORMATFILE = ''' +@sFormatFilePath + ''', BATCHSIZE  = 2048 )'
 	-- EXECUTE THE SQL STATEMENT BUILT
 	EXEC sp_executesql @sSQL
 
@@ -38,7 +38,7 @@ END
 
 GO
 
-go
+
 --**************************************************************************************
 -- Name: 	Grace Bui 2005
 -- Company: 	Brock Solutions
@@ -65,11 +65,12 @@ BEGIN
 
 	SET @sSQL = 'BULK INSERT SmartSort_Canpar_SCS.dbo.PACKAGE_TRANSACTIONS '
 	SET @sSQL = @sSQL + 'FROM ''' + @sFilePath + ''''
-	SET @sSQL = @sSQL + ' WITH ( FIRSTROW = 2, FORMATFILE = ''' +@sFormatFilePath + ''', BATCHSIZE = 4096 )'
+	SET @sSQL = @sSQL + ' WITH ( FIRSTROW = 2, FORMATFILE = ''' +@sFormatFilePath + ''', BATCHSIZE  = 2048 )'
 	-- EXECUTE THE SQL STATEMENT BUILT
 	EXEC sp_executesql @sSQL
 END
 GO
+
 
 --**************************************************************************************
 -- Name: 	Grace Bui 2005
@@ -102,7 +103,7 @@ BEGIN
 	-- INSERT INTO PACKAGES Table
 	SET @sSQL = 'BULK INSERT SmartSort_Canpar_SCS.dbo.PACKAGES '
 	SET @sSQL = @sSQL + 'FROM ''' + @sFilePath + ''''
-	SET @sSQL = @sSQL + ' WITH ( FIRE_TRIGGERS, FIRSTROW = 2, FORMATFILE = ''' +@sFormatFilePath + ''', BATCHSIZE = 4096 )'
+	SET @sSQL = @sSQL + ' WITH ( FIRE_TRIGGERS, FIRSTROW = 2, FORMATFILE = ''' +@sFormatFilePath + ''', BATCHSIZE  = 2048 )'
 	-- EXECUTE THE SQL STATEMENT BUILT
 	EXEC sp_executesql @sSQL
 

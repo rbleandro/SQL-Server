@@ -1,11 +1,11 @@
-use master
-go
+SET NOCOUNT ON
+
+USE master
+GO
+
 
 EXEC sp_configure 'show advanced options',1
 reconfigure
-
-USE dba
-go
 
 if object_id('config') is null
 CREATE TABLE config
@@ -19,4 +19,4 @@ truncate table config
 INSERT config
 EXEC sp_configure
 
-select 'exec sp_configure ''' + nome + ''',' + cast(run_value as varchar) + char(13) + 'reconfigure' from dba.dbo.config
+select 'exec sp_configure ''' + nome + ''',' + cast(run_value as varchar) + char(13) + 'reconfigure' from master.dbo.config
