@@ -46,3 +46,4 @@ SERVERPROPERTY(N'BuildClrVersion') AS [BuildClrVersionString],
 SERVERPROPERTY(N'ComputerNamePhysicalNetBIOS') AS [ComputerNamePhysicalNetBIOS]
 
 
+SELECT CONVERT(sysname, SERVERPROPERTY('servername')) --returns full instance name
