@@ -9,7 +9,7 @@ CONVERT(CHAR(100), SERVERPROPERTY('Servername')) AS Server,
 database_name, 
 backup_start_date, 
 backup_finish_date, 
-CONVERT(TIME(0),DATEADD (ms, DATEDIFF(ms,backup_start_date,backup_finish_date), 0)) TimeTaken,
+CONVERT(VARCHAR(50),DATEDIFF(DAY,backup_start_date,backup_finish_date)) + ':' + CONVERT(VARCHAR(8),CONVERT(TIME(0),DATEADD (ms, DATEDIFF(ms,backup_start_date,backup_finish_date), 0))) TimeTaken,
 expiration_date, 
 CASE type 
 WHEN 'D' THEN 'Database' 
@@ -24,12 +24,16 @@ FROM msdb.dbo.backupmediafamily b
 INNER JOIN msdb.dbo.backupset bs ON b.media_set_id = bs.media_set_id 
 WHERE backup_start_date >= DATEADD(DAY,-30,GETDATE())
 --AND name IS NOT NULL
-AND database_name= 'EdiEgap'
+--AND database_name= 'arch_'
+--AND bs.backup_finish_date > '2019-09-09'
+AND database_name='arch_db'
 ORDER BY 
 database_name, 
-backup_finish_date 
+backup_finish_date desc
 
 GO
+
+--SELECT * FROM sys.sysprocesses WHERE spid=15
 
 
 ------------------------------------------------------------------------------------------- 
