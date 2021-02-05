@@ -32,18 +32,22 @@ SELECT * FROM
 ORDER BY b.type_desc desc
 OPTION (RECOMPILE);
 
+
 --database file size report
 SELECT TOP 1000 CAST((af.size/128.0) AS DECIMAL(15,2)) AS 'Size in MB',
                 af.name,
                 CASE af.status WHEN 1048642 THEN af.growth ELSE CAST((af.growth/128.0) AS DECIMAL(15,2)) END AS 'Growth in MB/%',
                 af.filename,
-                d.name,d.name,d.recovery_model_desc
+                d.name,d.recovery_model_desc
+				,'use ['+d.name+'];DBCC SHRINKFILE (N'''+af.name+''' , 0, TRUNCATEONLY)' 
 				--,af.status
 FROM sys.sysaltfiles af
 INNER JOIN sys.databases d ON af.dbid=d.database_id
-WHERE af.groupid=0
+WHERE 1=1
+--AND af.groupid=0
 --AND CAST((af.size/128.0) AS DECIMAL(15,2)) > 100
-ORDER BY d.name
+AND af.name LIKE '%2017%'
+ORDER BY d.name,CAST((af.size/128.0) AS DECIMAL(15,2)) DESC
 
 
 --most recent backups taken

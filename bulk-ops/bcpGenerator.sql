@@ -2,44 +2,66 @@
 
 Remarks:
 
-1. This script will generate the command you should run on command prompt to extract and load data between 2 SQL Server databases. Just click on the link on the output. It will open a second tab containing the actual script.
+• 	This script will generate the command you should run on command prompt to extract and load data between 2 SQL Server databases. 
+	Just click on the link on the output. It will open a second tab containing the actual script.
+
+•	This script is provided as is and the user is responsible for any misuse and/or loss of data that might occur.
+
+•	The procedure will only work for user tables in the dbo schema by default. You can change the proc code to alter that.
+
+•	You can make the proc to generate the bcp command for multiple tables. Just alter the cursor query accordingly.
+
+•	The procedure authenticates to the SQL Servers using the integrated authentication mode. You can change the code to connect using a login/password if you want.
+	For that, just provide values for parameters -U and -P of the BCP command.
+
+•	The default delimiter is pipe "|". You can change it to anything you like.
+
+•	If the delimiter parameter is NULL, BCP will export data in native mode instead of text mode.
 
 */
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].BCPGenerator') AND type IN (N'P', N'PC'))
+BEGIN
+EXEC dbo.sp_executesql @statement = N'CREATE PROCEDURE [dbo].BCPGenerator AS' 
+END
+GO
+ALTER PROCEDURE BCPGenerator
+(
+@tableToBCP NVARCHAR(128)   ='' 			-- the table you want to export/import
+,@Top          VARCHAR(10)     = NULL 				-- Leave NULL to BCP all rows
+,@Delimiter    VARCHAR(4)      = NULL
+,@originserver NVARCHAR(100)='' 			--put the source server here (where you are going to read the data from)
+,@destserver NVARCHAR(100)='' 			--put the destination server here (where you are going to write the data to)
+,@origindb VARCHAR(100)=''					--put the origin database here
+,@destdb NVARCHAR(100)='' 				--put the destination database here
+,@Directory    VARCHAR(256)    = '' 	--where to put the files containing the actual data. This path must exist in the Origin Server.
+,@qcomp varchar(MAX)=NULL 							--Leave NULL for nonfiltered export. If you wish to filter the data  being exported, just write your where filter here. E.g.: 'where id=1'
+)
+AS
 SET CONCAT_NULL_YIELDS_NULL OFF	
 
-DECLARE @tableToBCP NVARCHAR(128)   ='administrador' -- the table you want to export/import
-    , @Top          VARCHAR(10)     = 1000 -- Leave NULL for all rows
-    , @Delimiter    VARCHAR(4)      = '|'
-    , @UseNULL      BIT             = 1 -- to keep null values and not substitute then with spaces and such
-    , @OverrideChar CHAR(1)         = '~' --obsolete. Use only if you are having trouble with collations. Uncomment the commented section below
-    , @MaxDop       CHAR(1)         = '1' --number of threads that should be used by this process
-	,@sorigem NVARCHAR(100)='BARATEIRO_PRD.dc.nova,1305' --put the source server here (where you are going to read the data from)
-	,@sdestino NVARCHAR(100)='VLO00478\SQL2014' --put the destination server here (where you are going to write the data to)
-	,@borigem VARCHAR(100)='db_hom_casasbahia_swat'
-	,@bdestino NVARCHAR(100)='db_prd_barateiro' --put the destination database here
-	, @Directory    VARCHAR(256)    = 'c:\temp\BCPS' --where to put the files containing the actual data
-	,@qcomp varchar(MAX)=NULL; --Leave NULL for nonfiltered export. If you wish to filter the data  being exported, just write your where filter here. E.g.: 'where id=1'
+--DECLARE @tableToBCP NVARCHAR(128)   ='ds_test' 			-- the table you want to export/import
+--    , @Top          VARCHAR(10)     = 1000 				-- Leave NULL to BCP all rows
+--    , @Delimiter    VARCHAR(4)      = '|'
+--    ,@originserver NVARCHAR(100)='CPRDC1VDEVSQL01' 			--put the source server here (where you are going to read the data from)
+--	,@destserver NVARCHAR(100)='CPRDC1VDEVSQL01' 			--put the destination server here (where you are going to write the data to)
+--	,@origindb VARCHAR(100)='DBA_Test'					--put the origin database here
+--	,@destdb NVARCHAR(100)='DBA_Test' 				--put the destination database here
+--	, @Directory    VARCHAR(256)    = 'c:\temp\BCPS' 	--where to put the files containing the actual data. This path must exist in the Origin Server.
+--	,@qcomp varchar(MAX)=NULL; 							--Leave NULL for nonfiltered export. If you wish to filter the data  being exported, just write your where filter here. E.g.: 'where id=1'
 
 DECLARE @columnList VARCHAR(MAX)='';
 DECLARE @bcpStatementIn NVARCHAR(MAX)='';
 DECLARE @bcpStatementIn2 NVARCHAR(MAX)='';
 DECLARE @bcpStatement2 NVARCHAR(MAX)='';
-DECLARE @bcpStatement NVARCHAR(MAX) = ''
-    , @currentID INT
-    , @firstID INT;
+DECLARE @bcpStatement NVARCHAR(MAX) = '';
 
-
-DECLARE c CURSOR FOR 
+DECLARE c CURSOR LOCAL READ_ONLY FORWARD_ONLY FOR 
 SELECT name 
 FROM sys.tables 
 WHERE 1=1
---AND name like '[a-h]%'
 AND is_ms_shipped=0
 AND [schema_id]=SCHEMA_ID('dbo')
-AND name NOT LIKE '%bkp%'
-AND name NOT LIKE '%old%'
---AND name IN ('Cliente')
 AND name = @tableToBCP
 ORDER BY name;
 
@@ -48,8 +70,8 @@ FETCH NEXT FROM c INTO @tableToBCP;
 WHILE @@FETCH_STATUS <> -1
 BEGIN
 
-SET @bcpStatement = @bcpStatement + 'BCP "SELECT ';
-SET @bcpStatement2 = @bcpStatement2 + 'BCP ';
+SET @bcpStatement = CHAR(10) + CHAR(13) + @bcpStatement + 'BCP "SELECT ';
+SET @bcpStatement2 = CHAR(10) + CHAR(13) + @bcpStatement2 + 'BCP ';
 
 SELECT @columnList=REPLACE(a.v,',|','')
 FROM 
@@ -66,60 +88,20 @@ FROM
 IF @Top IS NOT NULL
     SET @bcpStatement = @bcpStatement + 'TOP (' + @Top + ') ';
  
---SELECT @firstID = MIN(columnID) FROM @columnList;
  
-/*WHILE EXISTS(SELECT * FROM @columnList)
-BEGIN
- 
-    SELECT @currentID = MIN(columnID) FROM @columnList;
- 
-    IF @currentID <> @firstID
-        SET @bcpStatement = @bcpStatement + ',';
- 
-    SELECT @bcpStatement = @bcpStatement + 
-                            CASE 
-                                WHEN user_type_id IN (231, 167, 175, 239) 
-                                THEN 'CASE WHEN ' + name + ' = '''' THEN ' 
-                                    + CASE 
-                                        WHEN is_nullable = 1 THEN 'NULL' 
-                                        ELSE '''' + REPLICATE(@OverrideChar, max_length) + ''''
-                                      END
-                                    + ' WHEN ' + name + ' LIKE ''%' + @Delimiter + '%'''
-                                        + ' OR ' + name + ' LIKE ''%'' + CHAR(9) + ''%''' -- tab
-                                        + ' OR ' + name + ' LIKE ''%'' + CHAR(10) + ''%''' -- line feed
-                                        + ' OR ' + name + ' LIKE ''%'' + CHAR(13) + ''%''' -- carriage return
-                                        + ' THEN ' 
-                                        + CASE 
-                                            WHEN is_nullable = 1 THEN 'NULL' 
-                                            ELSE '''' + REPLICATE(@OverrideChar, max_length) + ''''
-                                          END
-                                    + ' ELSE ' + name + ' END' 
-                                ELSE name 
-                            END 
-    FROM sys.columns 
-    WHERE object_id = OBJECT_ID(@tableToBCP)
-        AND column_id = @currentID;
- 
-    DELETE FROM @columnList WHERE columnID = @currentID;
- 
- 
-END;*/
- 
-SET @bcpStatement = @bcpStatement + @columnList + ' FROM ' + @borigem + '.dbo.' + @tableToBCP + @qcomp
-    + ' OPTION (MAXDOP 1);" queryOut '
-    + @Directory + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @sorigem
+SET @bcpStatement = @bcpStatement + @columnList + ' FROM ' + @origindb + '.dbo.' + @tableToBCP + ' ' + @qcomp + '" queryout '
+    + @Directory + '\' + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @originserver
     + ' -T -t"' + @Delimiter + '" -c -CRAW -q' + CHAR(10) + CHAR(13);
 
-SET @bcpStatement2 = @bcpStatement2 + ' ' + @borigem + '.dbo.' + @tableToBCP 
-    + ' out '
-    + @Directory + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @sorigem
-    + ' -T -n -E -q' + CHAR(10) + CHAR(13);
+SET @bcpStatement2 = @bcpStatement2 + ' ' + @origindb + '.dbo.' + @tableToBCP + ' out '
+    + @Directory + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @originserver + ' -T -n -E -q'  + CHAR(10) + CHAR(13);
 
-SET @bcpStatementIn = @bcpStatementIn + 'bcp  ' + @bdestino + '.dbo.' + @tableToBCP + ' in ' + @Directory + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @sdestino
+SET @bcpStatementIn = @bcpStatementIn + 'bcp  ' + @destdb + '.dbo.' + @tableToBCP + ' in ' 
+	+ @Directory + '\' + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @destserver
     + ' -T -t"' + @Delimiter + '" -c -CRAW -q' + CHAR(10) + CHAR(13);
 
-SET @bcpStatementIn2 = @bcpStatementIn2 + 'bcp  ' + @bdestino + '.dbo.' + @tableToBCP + ' in ' + @Directory + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @sdestino
-    + ' -T -n -E -q' + CHAR(10) + CHAR(13);
+SET @bcpStatementIn2 = @bcpStatementIn2 + 'bcp  ' + @destdb + '.dbo.' + @tableToBCP + ' in ' 
+	+ @Directory + REPLACE(@tableToBCP, '.', '_') + '.dat -S' + @destserver + ' -T -n -E -q' + CHAR(10) + CHAR(13);
  
 
 FETCH NEXT FROM c INTO @tableToBCP;
@@ -129,5 +111,7 @@ DEALLOCATE c;
 
 DECLARE @VeryLongText NVARCHAR(MAX) = '';
 
-SELECT TOP 100 @VeryLongText =  @VeryLongText + @bcpStatement2 + @bcpStatementIn2; 
+SELECT @VeryLongText =  @VeryLongText + CASE WHEN @Delimiter IS NULL THEN @bcpStatement2 + @bcpStatementIn2 ELSE @bcpStatement + @bcpStatementIn end; 
 SELECT @VeryLongText AS [processing-instruction(x)] FOR XML PATH('');
+GO
+

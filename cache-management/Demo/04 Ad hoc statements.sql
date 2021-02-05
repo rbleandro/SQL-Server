@@ -40,27 +40,30 @@ GO
 
 -- And, if you want to dive into the size
 -- of the plan in the cache:
-CREATE PROCEDURE [QuickCheckOnCacheWSize]
+
+CREATE PROCEDURE [QuickCheckOnCacheWSizeAndPlan]
 (
     @StringToFind   NVARCHAR (4000)
 )
 AS
 SET NOCOUNT ON;
 
-SELECT [cp].[objtype]
-	, [cp].[cacheobjtype]
-	, [cp].[size_in_bytes]
-	, [cp].[usecounts]
-	, [st].[text]
-FROM [sys].[dm_exec_cached_plans] AS [cp]
-	CROSS APPLY [sys].[dm_exec_sql_text] 
-		([cp].[plan_handle]) AS [st]
-WHERE [cp].[objtype] IN (N'Adhoc', N'Prepared')
-	AND [st].[text] LIKE @StringToFind 
-    AND ([st].[text] NOT LIKE N'%syscacheobjects%'
-		OR [st].[text] NOT LIKE N'%SELECT%cp.objecttype%')
-ORDER BY [cp].[objtype], [cp].[size_in_bytes];
-GO 
+SELECT [st].[text]
+	, [qs].[execution_count]
+	, [qs].[plan_handle]
+	, [qs].[statement_start_offset]
+	, [qp].[query_plan],qs.last_execution_time,qs.last_elapsed_time
+	,'dbcc freeproccache('+CONVERT(VARCHAR(max),qs.sql_handle,1)+')' AS 'DBCCFreeProcChache'
+FROM [sys].[dm_exec_query_stats] AS [qs] 
+	CROSS APPLY [sys].[dm_exec_sql_text]
+		 ([qs].[sql_handle]) AS [st]
+	CROSS APPLY [sys].[dm_exec_query_plan]
+		 ([qs].[plan_handle]) AS [qp]
+WHERE [st].[text] LIKE @StringToFind 
+	AND ([st].[text] NOT LIKE N'%syscacheobjects%' OR [st].[text] NOT LIKE N'%SELECT%cp.objecttype%')
+	AND qs.last_elapsed_time > 10000
+ORDER BY 1, [qs].[execution_count] DESC;
+GO
 
 -- Essentially the same thing, but add the query
 -- plan to the output
